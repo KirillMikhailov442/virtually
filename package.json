@@ -1,0 +1,35 @@
+{
+  "name": "virtually",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 3001",
+    "build": "next build --turbopack",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@chakra-ui/react": "^2.10.9",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@reduxjs/toolkit": "^2.8.2",
+    "antd": "^5.27.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.541.0",
+    "next": "15.5.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-redux": "^9.2.0",
+    "react-spring-bottom-sheet": "^3.4.1",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "sass": "^1.90.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

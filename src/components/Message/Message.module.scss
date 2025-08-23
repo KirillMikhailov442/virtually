@@ -1,0 +1,19 @@
+.message {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  grid-template-rows: 50px 1fr;
+  gap: 0px 8px;
+  margin-bottom: 1rem;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.content {
+  color: var(--secondary-70);
+  position: relative;
+  font-weight: 500;
+}

@@ -1,0 +1,13 @@
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  padding: 5px;
+}

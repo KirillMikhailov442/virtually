@@ -1,0 +1,48 @@
+.side {
+  width: 350px;
+  transition: all 0.4s ease;
+  margin-right: -350px;
+  padding: 4rem 2rem 1rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sideOpen {
+  margin-right: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tabs {
+  background-color: var(--primary-95);
+  border: 3px solid var(--primary-90);
+  color: var(--secondary-80);
+  padding: 2px;
+  border-radius: 50px;
+  font-weight: 600;
+}
+
+.messages,
+.participants {
+  overflow-y: scroll;
+  flex-grow: 1;
+  margin-top: 0.5rem;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.bottomSheet {
+  background-color: red !important;
+}
+
+@media (max-width: 1024px) {
+  .side {
+    display: none;
+  }
+}

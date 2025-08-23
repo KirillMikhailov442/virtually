@@ -1,0 +1,58 @@
+.default {
+  border-radius: 50px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.5s ease;
+}
+
+.black {
+  background-color: var(--primary-90);
+  color: var(--secondary-80);
+
+  &:hover {
+    background-color: var(--primary-80);
+  }
+
+  &:focus {
+    background-color: var(--primary-80);
+    outline: 1px solid var(--primary-50);
+  }
+
+  &:disabled {
+    background-color: var(--primary-80);
+  }
+}
+
+.danger {
+  background-color: var(--red-100);
+  color: var(--secondary-80);
+
+  &:hover {
+    background-color: var(--red-90);
+  }
+
+  &:focus {
+    background-color: var(--red-90);
+
+    outline: 1px solid var(--primary-50);
+  }
+
+  &:disabled {
+    background-color: var(--primary-80);
+  }
+}
+
+.md {
+  padding: 0.25rem;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.sm {
+  padding: 0.1rem;
+  min-width: 30px;
+  min-height: 30px;
+}

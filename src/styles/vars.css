@@ -1,0 +1,30 @@
+:root {
+  --primary-100: #101214;
+  --primary-95: #1C1E20;
+  --primary-90: #292b2c;
+  --primary-80: #323436;
+  --primary-70: #3f4346;
+  --primary-60: #656769;
+  --primary-50: #6f7072;
+
+  --secondary-100: white;
+  --secondary-90: #dbdbdb;
+  --secondary-80: #dcdae7;
+  --secondary-70: #888889;
+
+  --red-100: #DE3B46;
+  --red-90: #f27665;
+
+  --blue-100: #1c71d1;
+
+  --mobileS: 320px;
+  --mobileM: 375px;
+  --mobileL: 425px;
+  --tablet: 768px;
+  --laptop: 1024px;
+  --laptopL: 1440px;
+
+  /* bottom sheet */
+  --rsbs-bg: #292b2c;
+}
+

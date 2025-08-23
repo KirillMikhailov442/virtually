@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+@import './vars.css';
+@import "./libs.css";
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background-color: var(--primary-100);
+  color: var(--secondary-80);
+}
+
+.empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+h5{
+  font-size: 1.25rem;
+}
