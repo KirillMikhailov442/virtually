@@ -45,14 +45,33 @@
   }
 }
 
+.white {
+  background-color: var(--secondary-80);
+  color: var(--primary-90);
+
+  &:hover {
+    background-color: var(--secondary-70);
+  }
+
+  &:focus {
+    background-color: var(--secondary-70);
+
+    outline: 1px solid var(--primary-50);
+  }
+
+  &:disabled {
+    background-color: var(--secondary-70);
+  }
+}
+
 .md {
-  padding: 0.25rem;
+  padding: 8px;
   min-width: 48px;
   min-height: 48px;
 }
 
 .sm {
-  padding: 0.1rem;
+  padding: 6px;
   min-width: 30px;
   min-height: 30px;
 }

@@ -7,10 +7,13 @@ import Button from '@/components/UI/Button';
 import { MessageCircle, Mic, Monitor, PhoneOff, Video } from 'lucide-react';
 import useAppDispatch from '@/hooks/useAppDispatch';
 import { toggleSide } from '@/store/slices/room';
+import useAppSelector from '@/hooks/useAppSekector';
+import clsx from 'clsx';
 
 const Content: FC = () => {
   const dispatch = useAppDispatch();
-  const [isMobile] = useMediaQuery('(max-width: 1024px)');
+  const isOpenSide = useAppSelector(state => state.roomSlice.sideOpen);
+  const [isLaptop] = useMediaQuery('(max-width: 1024px)');
   return (
     <main className={styles.main}>
       <header className={styles.header}>
@@ -25,16 +28,15 @@ const Content: FC = () => {
         <div>
           <Avatar
             size="sm"
-            name="Kent Dodds"
-            src="https://bit.ly/kent-c-dodds"
+            name={JSON.parse(sessionStorage.getItem('user') as string).name}
           />
         </div>
       </header>
       <div className={styles.people}>people</div>
       <nav className={styles.nav}>
-        {!isMobile && (
-          <div className={'empty'}>
-            <Button title="Открыть чат">
+        {!isLaptop && (
+          <div className="empty">
+            <Button title="Скопировать ссылку">
               <MessageCircle size={24} />
             </Button>
           </div>
@@ -52,14 +54,17 @@ const Content: FC = () => {
           <Button variant="danger" title="Завершить созвон">
             <PhoneOff size={20} />
           </Button>
-          {isMobile && (
+          {isLaptop && (
             <Button onClick={() => dispatch(toggleSide())} title="Открыть чат">
               <MessageCircle size={24} />
             </Button>
           )}
         </div>
-        {!isMobile && (
-          <Button onClick={() => dispatch(toggleSide())} title="Открыть чат">
+        {!isLaptop && (
+          <Button
+            className={clsx(isOpenSide && styles.activeButton)}
+            onClick={() => dispatch(toggleSide())}
+            title="Открыть чат">
             <MessageCircle size={24} />
           </Button>
         )}

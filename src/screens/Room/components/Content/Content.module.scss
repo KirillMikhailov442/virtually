@@ -31,13 +31,20 @@
   }
 }
 
+.activeButton {
+  background-color: var(--primary-70) !important;
+}
+
 @media (max-width: 1024px) {
-  .main {
-    padding: 1rem 1rem 0.5rem 1rem;
-    gap: 1rem;
-  }
   .nav {
     display: flex;
     justify-content: center;
+  }
+}
+
+@media (max-width: 800px) {
+  .main {
+    padding: 1rem 1rem 0.5rem 1rem;
+    gap: 1rem;
   }
 }

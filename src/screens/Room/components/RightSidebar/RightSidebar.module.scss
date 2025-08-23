@@ -8,13 +8,17 @@
 }
 
 .sideOpen {
-  margin-right: 0;
+  margin-right: 0 !important;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  &Mobile {
+    justify-content: center;
+  }
 }
 
 .tabs {
@@ -37,11 +41,37 @@
   }
 }
 
+.messages {
+  max-height: 70dvh; //Подумай на счет высоты scrollbar
+
+  &Mobile {
+    max-height: 45dvh;
+  }
+}
+
+.participants {
+  max-height: 80dvh;
+
+  &Mobile {
+    max-height: 50dvh;
+  }
+}
+
 .bottomSheet {
-  background-color: red !important;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 1024px) {
+  .side {
+    padding: 2rem 1rem 1rem 0;
+    width: 300px;
+    margin-right: -300px;
+  }
+}
+
+@media (max-width: 800px) {
   .side {
     display: none;
   }
