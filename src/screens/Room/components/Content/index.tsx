@@ -1,6 +1,6 @@
 'use client';
 
-import { FC } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import styles from './Content.module.scss';
 import { Avatar, AvatarGroup, useMediaQuery } from '@chakra-ui/react';
 import Button from '@/components/UI/Button';
@@ -9,16 +9,108 @@ import useAppDispatch from '@/hooks/useAppDispatch';
 import { toggleSide } from '@/store/slices/room';
 import useAppSelector from '@/hooks/useAppSekector';
 import clsx from 'clsx';
+import Cookies from 'js-cookie';
+import { useParams, useRouter } from 'next/navigation';
+import { socket } from '@/configs/socket';
+import { ACTIONS_SOCKET } from '@/constants/actionsSocket';
+import Peer from 'peerjs';
+import { toast } from 'sonner';
+import { SECRET_KEY } from '@/constants/secrets';
+import CryptoJS from 'crypto-js';
+import VideoPlayer from './Video';
+import { urlDecode } from '@/helpers/url';
+
+const soundLoading = new Audio('/sounds/loading.mp3');
+soundLoading.loop = true;
+soundLoading.volume = 0.5;
+
+const soundSucces = new Audio('/sounds/success.mp3');
+soundSucces.volume = 0.5;
 
 const Content: FC = () => {
   const dispatch = useAppDispatch();
   const isOpenSide = useAppSelector(state => state.roomSlice.sideOpen);
   const [isLaptop] = useMediaQuery('(max-width: 1024px)');
+  const roomId = useParams<{ id: string }>().id;
+  const { back } = useRouter();
+  const [peers, setPeers] = useState<
+    { id: string; stream: MediaStream; isPlayAudio: boolean }[]
+  >([]);
+  const [title, setTitle] = useState('');
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const peerServerRef = useRef<Peer | null>(null);
+
+  useEffect(() => {
+    const bytes = CryptoJS.AES.decrypt(urlDecode(roomId), SECRET_KEY);
+    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+
+    if (!decryptedString) {
+      back();
+    }
+    const obj = JSON.parse(decryptedString) as { id: string; name: string };
+    setTitle(obj.name);
+  }, []);
+
+  // useEffect(() => {
+  //   const peerServer = new Peer(undefined, {
+  //     host: '/',
+  //     port: 3002,
+  //   });
+
+  //   peerServer.on('open', id => {
+  //     socket.emit(ACTIONS_SOCKET.JOIN, { roomId, userId: id });
+  //   });
+
+  //   async function getVideo() {
+  //     try {
+  //       const stream = await navigator.mediaDevices.getUserMedia({
+  //         video: true,
+  //         audio: true,
+  //       });
+  //       setPeers(prev => [...prev, { id, stream, isPlayAudio: false }]);
+  //       soundSucces.play();
+
+  //       // Принимающая сторона
+  //       peerServer.on('call', call => {
+  //         call.answer(stream);
+  //         call.on('stream', videoStream => {
+  //           peerServer.off('call', () => {});
+  //           alert('Принимающий получил ответ');
+  //           setPeers(prev => [
+  //             ...prev,
+  //             { id: call.peer, stream: videoStream, isPlayAudio: true },
+  //           ]);
+  //         });
+  //       });
+
+  //       socket.on('USER_CONNECTED', userId => {
+  //         // Отправитель
+  //         soundLoading.play();
+  //         const call = peerServer.call(userId, stream);
+  //         call.on('stream', videoStream => {
+  //           peerServer.off('call', () => {});
+  //           alert('Отправитель получил ответ');
+  //           soundLoading.pause();
+  //           soundSucces.play();
+  //           setPeers(prev => [
+  //             ...prev,
+  //             { id: call.peer, stream: videoStream, isPlayAudio: true },
+  //           ]);
+  //         });
+  //       });
+  //     } catch (err) {
+  //       console.error('Ошибка доступа к камере: ', err);
+  //     }
+  //   }
+
+  //   getVideo();
+  // }, []);
+
   return (
     <main className={styles.main}>
       <header className={styles.header}>
         <div className="flex items-center gap-3">
-          <h5 className={styles.name}>Название комнаты</h5>
+          <h5 className={styles.name}>{title}</h5>
           <AvatarGroup size="xs" max={5}>
             <Avatar name="Ryan Florence" src="https://bit.ly/ryan-florence" />
             <Avatar name="Segun Adebayo" src="https://bit.ly/sage-adebayo" />
@@ -28,11 +120,15 @@ const Content: FC = () => {
         <div>
           <Avatar
             size="sm"
-            name={JSON.parse(sessionStorage.getItem('user') as string).name}
+            name={JSON.parse(Cookies.get('user') as string).name}
           />
         </div>
       </header>
-      <div className={styles.people}>people</div>
+      <div className={styles.videos}>
+        {peers.map((peer, index) => (
+          <VideoPlayer {...peer} key={index} />
+        ))}
+      </div>
       <nav className={styles.nav}>
         {!isLaptop && (
           <div className="empty">

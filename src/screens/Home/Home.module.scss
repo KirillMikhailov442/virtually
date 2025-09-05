@@ -7,27 +7,6 @@
   position: relative;
 }
 
-.logo {
-  position: absolute;
-  top: 2rem;
-  left: 2rem;
-  text-transform: uppercase;
-  font-weight: bold;
-  background-image: linear-gradient(90deg, #f91cbe, #0b9fff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.account {
-  position: absolute;
-  top: 2rem;
-  right: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  cursor: pointer;
-}
-
 .links {
   display: flex;
   gap: 0.5rem;

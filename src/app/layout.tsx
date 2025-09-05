@@ -6,7 +6,6 @@ import 'react-spring-bottom-sheet/dist/style.css';
 import { Toaster } from 'sonner';
 import favicon from '@public/favicon.ico';
 import { SITE_DESCRIPTION, SITE_NAME } from '@/configs/seo';
-
 const manrope = Manrope({
   subsets: ['latin'],
 });
@@ -27,6 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+      </head>
       <Providers>
         <body className={`${manrope.className} antialiased`}>
           <Toaster position="top-right" className="custom-toast" />

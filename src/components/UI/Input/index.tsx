@@ -14,7 +14,7 @@ export interface InputProps extends HTMLAttributes<HTMLInputElement> {
   name?: string;
   placeholder?: string;
   readOnly?: boolean;
-  value?: string;
+  value?: string | number;
 }
 const Input: FC<InputProps> = ({ type, ...props }) => {
   switch (type) {

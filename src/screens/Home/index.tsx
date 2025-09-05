@@ -9,10 +9,13 @@ import * as z from 'zod';
 import { Resolver, useForm } from 'react-hook-form';
 import { Github, Send } from 'lucide-react';
 import { GITHUB_LINK, TG_LINK } from '@/constants/links';
-import { Dropdown, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import styles from './Home.module.scss';
-import { Avatar } from '@chakra-ui/react';
 import { useRouter } from 'next/navigation';
+import CryptoJS from 'crypto-js';
+import Header from '@/components/Header';
+import { SECRET_KEY } from '@/constants/secrets';
+import { urlEncode } from '@/helpers/url';
 
 const HomeScreen: NextPage = () => {
   const formSchema = z.object({
@@ -36,39 +39,10 @@ const HomeScreen: NextPage = () => {
     resolver: zodResolver(formSchema) as Resolver<FormSchema>,
   });
 
-  const { replace } = useRouter();
-
+  const { push } = useRouter();
   return (
     <div className={styles.page}>
-      <Link href={'/'} className={styles.logo}>
-        <h4>Virtually</h4>
-      </Link>
-      <Dropdown
-        trigger={['click']}
-        menu={{
-          items: [
-            {
-              label: 'Выйти',
-              key: 1,
-              danger: true,
-              onClick: () => {
-                sessionStorage.removeItem('user');
-                replace('/login');
-              },
-            },
-          ],
-        }}>
-        <div className={styles.account}>
-          {' '}
-          <p>
-            {JSON.parse(sessionStorage.getItem('user') as string).name}
-          </p>{' '}
-          <Avatar
-            name={JSON.parse(sessionStorage.getItem('user') as string).name}
-            size="sm"
-          />
-        </div>
-      </Dropdown>
+      <Header />
       <div className={styles.container}>
         <h5 className={styles.title}>Создать комнату</h5>
         <p className={styles.subtitle}>
@@ -76,7 +50,20 @@ const HomeScreen: NextPage = () => {
         </p>
         <form
           onSubmit={handleSubmit(data => {
-            console.log(data);
+            const obj = JSON.stringify({
+              id: CryptoJS.lib.WordArray.random(4).toString(),
+              name: data.name,
+              count: data.count,
+            });
+            const encrypted = CryptoJS.AES.encrypt(obj, SECRET_KEY).toString();
+
+            // const id = v4();
+            // Cookies.set(
+            //   'room',
+            //   JSON.stringify({ id, name: data.name, count: data.count }),
+            //   { expires: 1 },
+            // );
+            push(`/rooms/${urlEncode(encrypted)}`);
           })}
           className={styles.form}>
           <Input

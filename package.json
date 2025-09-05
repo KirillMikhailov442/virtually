@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -p 3001",
+    "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "server-start": "node server.js"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.10.9",
@@ -15,24 +16,35 @@
     "@reduxjs/toolkit": "^2.8.2",
     "antd": "^5.27.1",
     "clsx": "^2.1.1",
+    "crypto-js": "^4.2.0",
+    "express": "^5.1.0",
     "framer-motion": "^12.23.12",
+    "js-cookie": "^3.0.5",
     "lucide-react": "^0.541.0",
-    "next": "15.5.0",
+    "next": "^15.5.1",
+    "peerjs": "^1.5.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
     "react-redux": "^9.2.0",
     "react-spring-bottom-sheet": "^3.4.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "sonner": "^2.0.7",
+    "uuid": "^11.1.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/crypto-js": "^4.2.2",
+    "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "nodemon": "^3.1.10",
     "sass": "^1.90.0",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

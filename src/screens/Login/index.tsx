@@ -12,10 +12,14 @@ import { Github, Send } from 'lucide-react';
 import { GITHUB_LINK, TG_LINK } from '@/constants/links';
 import { Tooltip } from 'antd';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Cookies from 'js-cookie';
+import { v4 as uuidv4 } from 'uuid';
+import Header from '@/components/Header';
 
 const LoginScreen: NextPage = () => {
   const { push } = useRouter();
+  const searchParams = useSearchParams();
   const formSchema = z.object({
     name: z
       .string()
@@ -35,9 +39,7 @@ const LoginScreen: NextPage = () => {
 
   return (
     <div className={styles.page}>
-      <Link href={'/'} className={styles.logo}>
-        <h4>Virtually</h4>
-      </Link>
+      <Header />
       <div className={styles.container}>
         <h5 className={styles.title}>Придумайте имя</h5>
         <p className={styles.subtitle}>
@@ -45,10 +47,17 @@ const LoginScreen: NextPage = () => {
         </p>
         <form
           onSubmit={handleSubmit(data => {
-            sessionStorage.setItem('user', JSON.stringify({ name: data.name }));
+            const returnUrl = searchParams.get('from') || '/';
+            Cookies.set(
+              'user',
+              JSON.stringify({ name: data.name, id: uuidv4() }),
+              {
+                expires: 1,
+              },
+            );
             toast.success('Аккаунт успешно создан');
             setTimeout(() => {
-              push('/');
+              push(returnUrl);
             }, 500);
           })}
           className={styles.form}>
