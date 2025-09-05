@@ -13,7 +13,7 @@ import Cookies from 'js-cookie';
 import { useParams, useRouter } from 'next/navigation';
 import { socket } from '@/configs/socket';
 import { ACTIONS_SOCKET } from '@/constants/actionsSocket';
-import Peer from 'peerjs';
+import Peer, { MediaConnection } from 'peerjs';
 import { toast } from 'sonner';
 import { SECRET_KEY } from '@/constants/secrets';
 import CryptoJS from 'crypto-js';
@@ -38,7 +38,6 @@ const Content: FC = () => {
   >([]);
   const [title, setTitle] = useState('');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const peerServerRef = useRef<Peer | null>(null);
 
   useEffect(() => {
     const bytes = CryptoJS.AES.decrypt(urlDecode(roomId), SECRET_KEY);
@@ -51,60 +50,119 @@ const Content: FC = () => {
     setTitle(obj.name);
   }, []);
 
-  // useEffect(() => {
-  //   const peerServer = new Peer(undefined, {
-  //     host: '/',
-  //     port: 3002,
-  //   });
+  useEffect(() => {
+    const peerServer = new Peer({
+      host: '/',
+      port: 3002,
+      debug: 3,
+    });
 
-  //   peerServer.on('open', id => {
-  //     socket.emit(ACTIONS_SOCKET.JOIN, { roomId, userId: id });
-  //   });
+    peerServer.on('open', id => {
+      socket.emit(ACTIONS_SOCKET.JOIN, {
+        roomId,
+        userId: id,
+      });
+    });
 
-  //   async function getVideo() {
-  //     try {
-  //       const stream = await navigator.mediaDevices.getUserMedia({
-  //         video: true,
-  //         audio: true,
-  //       });
-  //       setPeers(prev => [...prev, { id, stream, isPlayAudio: false }]);
-  //       soundSucces.play();
+    peerServer.on('connection', () => {
+      console.log('Соединились!');
+    });
 
-  //       // Принимающая сторона
-  //       peerServer.on('call', call => {
-  //         call.answer(stream);
-  //         call.on('stream', videoStream => {
-  //           peerServer.off('call', () => {});
-  //           alert('Принимающий получил ответ');
-  //           setPeers(prev => [
-  //             ...prev,
-  //             { id: call.peer, stream: videoStream, isPlayAudio: true },
-  //           ]);
-  //         });
-  //       });
+    // Получение локального медиапотока
+    const getVideo = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
 
-  //       socket.on('USER_CONNECTED', userId => {
-  //         // Отправитель
-  //         soundLoading.play();
-  //         const call = peerServer.call(userId, stream);
-  //         call.on('stream', videoStream => {
-  //           peerServer.off('call', () => {});
-  //           alert('Отправитель получил ответ');
-  //           soundLoading.pause();
-  //           soundSucces.play();
-  //           setPeers(prev => [
-  //             ...prev,
-  //             { id: call.peer, stream: videoStream, isPlayAudio: true },
-  //           ]);
-  //         });
-  //       });
-  //     } catch (err) {
-  //       console.error('Ошибка доступа к камере: ', err);
-  //     }
-  //   }
+        await setPeers(prev => [
+          ...prev,
+          { stream, id: 'me', isPlayAudio: false },
+        ]);
 
-  //   getVideo();
-  // }, []);
+        await socket.on('USER_CONNECTED', userId => {
+          console.log('Новый пользователь, надо позвонить');
+          soundLoading.play();
+          const call = peerServer.call(userId, stream);
+
+          call.on('stream', remoteStream => {
+            soundLoading.pause();
+            soundSucces.play();
+            console.log('Мне передали stream');
+            setPeers(prev => [
+              ...prev,
+              { stream: remoteStream, id: call.peer, isPlayAudio: true },
+            ]);
+          });
+        });
+
+        await peerServer.on('call', call => {
+          console.log('Кто-то мне звонит, надо ответить');
+          call.answer(stream);
+
+          call.on('stream', remoteStream => {
+            console.log('Тот, кто мне позвонил, передал мне stream');
+            setPeers(prev => [
+              ...prev,
+              { stream: remoteStream, id: call.peer, isPlayAudio: true },
+            ]);
+          });
+        });
+      } catch (err) {
+        toast.warning('Вы не дали достум к медиа');
+      }
+    };
+
+    getVideo();
+
+    // Обработка входящих вызовов
+    // peerServer.on('call', call => {
+    //   if (!localStream) return;
+    //   console.log('Кто-то звонит надо ответить');
+
+    //   call.answer(localStream);
+    // call.on('stream', remoteStream => {
+    //   setPeers(prev => {
+    //     if (!prev.some(peer => peer.id === call.peer)) {
+    //       return [
+    //         ...prev,
+    //         {
+    //           id: call.peer,
+    //           stream: remoteStream,
+    //           isPlayAudio: true,
+    //         },
+    //       ];
+    //     }
+    //     return prev;
+    //   });
+    // });
+    // });
+
+    // Обработка подключения новых пользователей
+    // const handleUserConnected = (userId: string) => {
+    //   if (!localStream || userId == peerServer.id) return;
+    //   console.log('Кто-то подключился, надо позвонить');
+
+    //   const call = peerServer.call(userId, localStream);
+    // call.on('stream', remoteStream => {
+    //   setPeers(prev => {
+    //     if (!prev.some(peer => peer.id === call.peer)) {
+    //       return [
+    //         ...prev,
+    //         {
+    //           id: call.peer,
+    //           stream: remoteStream,
+    //           isPlayAudio: true,
+    //         },
+    //       ];
+    //     }
+    //     return prev;
+    //   });
+    // });
+    // };
+
+    // socket.on('USER_CONNECTED', handleUserConnected);
+  }, []);
 
   return (
     <main className={styles.main}>

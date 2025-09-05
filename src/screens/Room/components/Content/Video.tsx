@@ -22,7 +22,7 @@ const VideoPlayer: FC<VideoPlayerProps> = ({ stream, isPlayAudio = true }) => {
 
   return (
     <div className={clsx(styles.video)}>
-      {isPlayAudio && <audio ref={audioRef} autoPlay playsInline />}
+      {isPlayAudio && <audio ref={audioRef} autoPlay />}
       <video muted={true} autoPlay ref={videoRef} />
     </div>
   );

@@ -26,7 +26,7 @@ io.on('connection', (socket) => {
       socket.join(roomId)
       console.log(`ROOM: ${roomId} USER: ${userId}`);
       
-      socket.to(roomId).emit('USER_CONNECTED', userId)
+      socket.broadcast.to(roomId).emit('USER_CONNECTED', userId)
     })
 });
 
