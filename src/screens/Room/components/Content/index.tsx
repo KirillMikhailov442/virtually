@@ -38,6 +38,8 @@ const Content: FC = () => {
   >([]);
   const [title, setTitle] = useState('');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const peerServerRef = useRef<Peer | null>(null);
+  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
     const bytes = CryptoJS.AES.decrypt(urlDecode(roomId), SECRET_KEY);
@@ -50,12 +52,111 @@ const Content: FC = () => {
     setTitle(obj.name);
   }, []);
 
+  const cleanupTimeouts = () => {
+    timeoutRefs.current.forEach((timeout, key) => {
+      clearTimeout(timeout);
+      timeoutRefs.current.delete(key);
+    });
+  };
+
+  const reconnectCall = (
+    userId: string,
+    stream: MediaStream,
+    peerServer: Peer,
+  ) => {
+    console.log(`Переподключение к пользователю: ${userId}`);
+
+    // Очищаем предыдущий таймаут если он есть
+    if (timeoutRefs.current.has(userId)) {
+      clearTimeout(timeoutRefs.current.get(userId));
+      timeoutRefs.current.delete(userId);
+    }
+
+    const call = peerServer.call(userId, stream);
+
+    // Устанавливаем таймаут на 5 секунд
+    const timeoutId = setTimeout(() => {
+      console.log(`Таймаут подключения к ${userId}, переподключаемся...`);
+      call.close();
+      reconnectCall(userId, stream, peerServer);
+    }, 5000);
+
+    timeoutRefs.current.set(userId, timeoutId);
+
+    call.on('stream', remoteStream => {
+      // Успешное подключение - очищаем таймаут
+      if (timeoutRefs.current.has(userId)) {
+        clearTimeout(timeoutRefs.current.get(userId));
+        timeoutRefs.current.delete(userId);
+      }
+
+      soundLoading.pause();
+      soundSucces.play();
+      console.log('Мне передали stream');
+
+      setPeers(prev => {
+        // Убираем дубликаты
+        const filtered = prev.filter(peer => peer.id !== call.peer);
+        return [
+          ...filtered,
+          { stream: remoteStream, id: call.peer, isPlayAudio: true },
+        ];
+      });
+    });
+
+    call.on('error', error => {
+      console.error('Ошибка вызова:', error);
+      if (timeoutRefs.current.has(userId)) {
+        clearTimeout(timeoutRefs.current.get(userId));
+        timeoutRefs.current.delete(userId);
+      }
+
+      // Повторная попытка через 2 секунды
+      setTimeout(() => {
+        reconnectCall(userId, stream, peerServer);
+      }, 2000);
+    });
+  };
+
+  const handleIncomingCall = (call: MediaConnection, stream: MediaStream) => {
+    console.log('Кто-то мне звонит, надо ответить');
+
+    // Устанавливаем таймаут на ответ
+    const answerTimeout = setTimeout(() => {
+      console.log('Таймаут входящего вызова, закрываем');
+      call.close();
+    }, 5000);
+
+    call.answer(stream);
+
+    call.on('stream', remoteStream => {
+      // Успешный ответ - очищаем таймаут
+      clearTimeout(answerTimeout);
+      console.log('Тот, кто мне позвонил, передал мне stream');
+
+      setPeers(prev => {
+        const filtered = prev.filter(peer => peer.id !== call.peer);
+        return [
+          ...filtered,
+          { stream: remoteStream, id: call.peer, isPlayAudio: true },
+        ];
+      });
+    });
+
+    call.on('error', error => {
+      console.error('Ошибка входящего вызова:', error);
+      clearTimeout(answerTimeout);
+    });
+  };
+
   useEffect(() => {
     const peerServer = new Peer({
       host: '/',
       port: 3002,
-      debug: 3,
+      // debug: 3,
     });
+
+    peerServerRef.current = peerServer;
 
     peerServer.on('open', id => {
       socket.emit(ACTIONS_SOCKET.JOIN, {
@@ -64,104 +165,47 @@ const Content: FC = () => {
       });
     });
 
-    peerServer.on('connection', () => {
-      console.log('Соединились!');
-    });
-
     // Получение локального медиапотока
     const getVideo = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
+          audio: true,
         });
 
-        await setPeers(prev => [
-          ...prev,
+        setLocalStream(stream);
+        setPeers(prev => [
+          ...prev.filter(peer => peer.id !== 'me'),
           { stream, id: 'me', isPlayAudio: false },
         ]);
 
-        await socket.on('USER_CONNECTED', userId => {
+        socket.on('USER_CONNECTED', userId => {
           console.log('Новый пользователь, надо позвонить');
           soundLoading.play();
-          const call = peerServer.call(userId, stream);
-
-          call.on('stream', remoteStream => {
-            soundLoading.pause();
-            soundSucces.play();
-            console.log('Мне передали stream');
-            setPeers(prev => [
-              ...prev,
-              { stream: remoteStream, id: call.peer, isPlayAudio: true },
-            ]);
-          });
+          reconnectCall(userId, stream, peerServer);
         });
 
-        await peerServer.on('call', call => {
-          console.log('Кто-то мне звонит, надо ответить');
-          call.answer(stream);
-
-          call.on('stream', remoteStream => {
-            console.log('Тот, кто мне позвонил, передал мне stream');
-            setPeers(prev => [
-              ...prev,
-              { stream: remoteStream, id: call.peer, isPlayAudio: true },
-            ]);
-          });
+        peerServer.on('call', call => {
+          handleIncomingCall(call, stream);
         });
       } catch (err) {
-        toast.warning('Вы не дали достум к медиа');
+        toast.warning('Вы не дали доступ к медиа');
       }
     };
 
     getVideo();
 
-    // Обработка входящих вызовов
-    // peerServer.on('call', call => {
-    //   if (!localStream) return;
-    //   console.log('Кто-то звонит надо ответить');
-
-    //   call.answer(localStream);
-    // call.on('stream', remoteStream => {
-    //   setPeers(prev => {
-    //     if (!prev.some(peer => peer.id === call.peer)) {
-    //       return [
-    //         ...prev,
-    //         {
-    //           id: call.peer,
-    //           stream: remoteStream,
-    //           isPlayAudio: true,
-    //         },
-    //       ];
-    //     }
-    //     return prev;
-    //   });
-    // });
-    // });
-
-    // Обработка подключения новых пользователей
-    // const handleUserConnected = (userId: string) => {
-    //   if (!localStream || userId == peerServer.id) return;
-    //   console.log('Кто-то подключился, надо позвонить');
-
-    //   const call = peerServer.call(userId, localStream);
-    // call.on('stream', remoteStream => {
-    //   setPeers(prev => {
-    //     if (!prev.some(peer => peer.id === call.peer)) {
-    //       return [
-    //         ...prev,
-    //         {
-    //           id: call.peer,
-    //           stream: remoteStream,
-    //           isPlayAudio: true,
-    //         },
-    //       ];
-    //     }
-    //     return prev;
-    //   });
-    // });
-    // };
-
-    // socket.on('USER_CONNECTED', handleUserConnected);
+    return () => {
+      // Очистка при размонтировании
+      cleanupTimeouts();
+      if (peerServerRef.current) {
+        peerServerRef.current.destroy();
+      }
+      socket.off('USER_CONNECTED');
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+    };
   }, []);
 
   return (
@@ -184,7 +228,7 @@ const Content: FC = () => {
       </header>
       <div className={styles.videos}>
         {peers.map((peer, index) => (
-          <VideoPlayer {...peer} key={index} />
+          <VideoPlayer {...peer} key={`${peer.id}-${index}`} />
         ))}
       </div>
       <nav className={styles.nav}>
