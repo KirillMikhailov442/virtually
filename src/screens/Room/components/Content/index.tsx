@@ -10,6 +10,7 @@ import {
   Mic,
   MicOff,
   Monitor,
+  MonitorOff,
   PhoneOff,
   Video,
   VideoOff,
@@ -45,10 +46,13 @@ const Content: FC = () => {
   const [peers, setPeers] = useState<VideoPlayerProps[]>([]);
   const [title, setTitle] = useState('');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const peerServerRef = useRef<Peer | null>(null);
   const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const originalLocalStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     const bytes = CryptoJS.AES.decrypt(urlDecode(roomId), SECRET_KEY);
@@ -73,7 +77,6 @@ const Content: FC = () => {
     stream: MediaStream,
     peerServer: Peer,
   ) => {
-    // Очищаем предыдущий таймаут если он есть
     if (timeoutRefs.current.has(userId)) {
       clearTimeout(timeoutRefs.current.get(userId));
       timeoutRefs.current.delete(userId);
@@ -81,7 +84,6 @@ const Content: FC = () => {
 
     const call = peerServer.call(userId, stream);
 
-    // Устанавливаем таймаут на 5 секунд
     const timeoutId = setTimeout(() => {
       console.log(`Таймаут подключения к ${userId}, переподключаемся...`);
       call.close();
@@ -91,7 +93,6 @@ const Content: FC = () => {
     timeoutRefs.current.set(userId, timeoutId);
 
     call.on('stream', remoteStream => {
-      // Успешное подключение - очищаем таймаут
       if (timeoutRefs.current.has(userId)) {
         clearTimeout(timeoutRefs.current.get(userId));
         timeoutRefs.current.delete(userId);
@@ -101,7 +102,6 @@ const Content: FC = () => {
       soundSucces.play();
 
       setPeers(prev => {
-        // Убираем дубликаты
         const filtered = prev.filter(peer => peer.id !== call.peer);
         return [
           ...filtered,
@@ -152,16 +152,86 @@ const Content: FC = () => {
     });
 
     call.on('error', error => {
-      console.error('Ошибка входящего вызова:', error);
       clearTimeout(answerTimeout);
     });
+  };
+
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+        setScreenStream(null);
+      }
+
+      if (originalLocalStreamRef.current) {
+        setLocalStream(originalLocalStreamRef.current);
+
+        setPeers(prev =>
+          prev.map(peer =>
+            peer.id === 'me'
+              ? {
+                  ...peer,
+                  stream: originalLocalStreamRef.current!,
+                  isPlayVideo: true,
+                }
+              : peer,
+          ),
+        );
+
+        peers.forEach(peer => {
+          if (peer.id !== 'me' && peerServerRef.current) {
+            reconnectCall(
+              peer.id,
+              originalLocalStreamRef.current!,
+              peerServerRef.current,
+            );
+          }
+        });
+      }
+
+      setIsScreenSharing(false);
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+
+        setScreenStream(screenStream);
+        originalLocalStreamRef.current = localStream;
+        setLocalStream(screenStream);
+
+        setPeers(prev =>
+          prev.map(peer =>
+            peer.id === 'me'
+              ? { ...peer, stream: screenStream, isPlayVideo: true }
+              : peer,
+          ),
+        );
+
+        peers.forEach(peer => {
+          if (peer.id !== 'me' && peerServerRef.current) {
+            reconnectCall(peer.id, screenStream, peerServerRef.current);
+          }
+        });
+
+        screenStream.getTracks().forEach(track => {
+          track.onended = () => {
+            toggleScreenShare();
+          };
+        });
+
+        setIsScreenSharing(true);
+      } catch (err) {
+        toast.error('Не удалось начать демонстрацию экрана');
+      }
+    }
   };
 
   useEffect(() => {
     const peerServer = new Peer({
       host: '/',
       port: 3002,
-      // debug: 3,
     });
 
     peerServerRef.current = peerServer;
@@ -209,6 +279,9 @@ const Content: FC = () => {
       socket.off(ACTIONS_SOCKET.USER_CONNECTED);
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
+      }
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -306,6 +379,7 @@ const Content: FC = () => {
             isAlone={peers.length == 1}
             {...peer}
             key={`${peer.id}-${index}`}
+            isScreenShare={isScreenSharing && peer.id === 'me'}
           />
         ))}
       </div>
@@ -325,11 +399,19 @@ const Content: FC = () => {
           <Button
             onClick={toggleVideo}
             variant={isVideoEnabled ? 'white' : 'black'}
+            disabled={isScreenSharing}
             title="Камера">
             {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
           </Button>
-          <Button title="Камера устройства">
-            <Monitor size={24} />
+          <Button
+            onClick={toggleScreenShare}
+            variant={isScreenSharing ? 'white' : 'black'}
+            title={
+              isScreenSharing
+                ? 'Остановить демонстрацию'
+                : 'Демонстрация экрана'
+            }>
+            {isScreenSharing ? <MonitorOff size={24} /> : <Monitor size={24} />}
           </Button>
           <Button variant="danger" title="Завершить созвон">
             <PhoneOff size={20} />

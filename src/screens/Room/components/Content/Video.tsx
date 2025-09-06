@@ -8,6 +8,7 @@ export interface VideoPlayerProps {
   stream: MediaStream;
   isPlayAudio?: boolean;
   isPlayVideo?: boolean;
+  isScreenShare?: boolean;
   isAlone?: boolean;
   me?: boolean;
 }
@@ -16,6 +17,7 @@ const VideoPlayer: FC<VideoPlayerProps> = ({
   stream,
   isPlayAudio = true,
   isPlayVideo = true,
+  isScreenShare = false,
   isAlone,
   me = false,
 }) => {
@@ -32,7 +34,12 @@ const VideoPlayer: FC<VideoPlayerProps> = ({
   }, [stream, isPlayAudio, isPlayVideo]);
 
   return (
-    <div className={clsx(styles.video, isAlone && styles.videoAlone)}>
+    <div
+      className={clsx(
+        styles.video,
+        isScreenShare && styles.videoScreenShare,
+        isAlone && styles.videoAlone,
+      )}>
       {isPlayAudio ? (
         <audio ref={audioRef} defaultValue={0.5} muted={me} autoPlay />
       ) : (
