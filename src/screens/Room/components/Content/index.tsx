@@ -4,7 +4,16 @@ import { FC, useEffect, useRef, useState } from 'react';
 import styles from './Content.module.scss';
 import { Avatar, AvatarGroup, useMediaQuery } from '@chakra-ui/react';
 import Button from '@/components/UI/Button';
-import { MessageCircle, Mic, Monitor, PhoneOff, Video } from 'lucide-react';
+import {
+  Link,
+  MessageCircle,
+  Mic,
+  MicOff,
+  Monitor,
+  PhoneOff,
+  Video,
+  VideoOff,
+} from 'lucide-react';
 import useAppDispatch from '@/hooks/useAppDispatch';
 import { toggleSide } from '@/store/slices/room';
 import useAppSelector from '@/hooks/useAppSekector';
@@ -17,7 +26,7 @@ import Peer, { MediaConnection } from 'peerjs';
 import { toast } from 'sonner';
 import { SECRET_KEY } from '@/constants/secrets';
 import CryptoJS from 'crypto-js';
-import VideoPlayer from './Video';
+import VideoPlayer, { VideoPlayerProps } from './Video';
 import { urlDecode } from '@/helpers/url';
 
 const soundLoading = new Audio('/sounds/loading.mp3');
@@ -33,13 +42,13 @@ const Content: FC = () => {
   const [isLaptop] = useMediaQuery('(max-width: 1024px)');
   const roomId = useParams<{ id: string }>().id;
   const { back } = useRouter();
-  const [peers, setPeers] = useState<
-    { id: string; stream: MediaStream; isPlayAudio: boolean }[]
-  >([]);
+  const [peers, setPeers] = useState<VideoPlayerProps[]>([]);
   const [title, setTitle] = useState('');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const peerServerRef = useRef<Peer | null>(null);
   const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
 
   useEffect(() => {
     const bytes = CryptoJS.AES.decrypt(urlDecode(roomId), SECRET_KEY);
@@ -64,8 +73,6 @@ const Content: FC = () => {
     stream: MediaStream,
     peerServer: Peer,
   ) => {
-    console.log(`Переподключение к пользователю: ${userId}`);
-
     // Очищаем предыдущий таймаут если он есть
     if (timeoutRefs.current.has(userId)) {
       clearTimeout(timeoutRefs.current.get(userId));
@@ -92,14 +99,18 @@ const Content: FC = () => {
 
       soundLoading.pause();
       soundSucces.play();
-      console.log('Мне передали stream');
 
       setPeers(prev => {
         // Убираем дубликаты
         const filtered = prev.filter(peer => peer.id !== call.peer);
         return [
           ...filtered,
-          { stream: remoteStream, id: call.peer, isPlayAudio: true },
+          {
+            stream: remoteStream,
+            id: call.peer,
+            isPlayAudio: true,
+            isPlayVideo: true,
+          },
         ];
       });
     });
@@ -111,7 +122,6 @@ const Content: FC = () => {
         timeoutRefs.current.delete(userId);
       }
 
-      // Повторная попытка через 2 секунды
       setTimeout(() => {
         reconnectCall(userId, stream, peerServer);
       }, 2000);
@@ -119,26 +129,24 @@ const Content: FC = () => {
   };
 
   const handleIncomingCall = (call: MediaConnection, stream: MediaStream) => {
-    console.log('Кто-то мне звонит, надо ответить');
-
-    // Устанавливаем таймаут на ответ
     const answerTimeout = setTimeout(() => {
-      console.log('Таймаут входящего вызова, закрываем');
       call.close();
     }, 5000);
 
     call.answer(stream);
 
     call.on('stream', remoteStream => {
-      // Успешный ответ - очищаем таймаут
       clearTimeout(answerTimeout);
-      console.log('Тот, кто мне позвонил, передал мне stream');
-
       setPeers(prev => {
         const filtered = prev.filter(peer => peer.id !== call.peer);
         return [
           ...filtered,
-          { stream: remoteStream, id: call.peer, isPlayAudio: true },
+          {
+            stream: remoteStream,
+            id: call.peer,
+            isPlayAudio: true,
+            isPlayVideo: true,
+          },
         ];
       });
     });
@@ -165,7 +173,6 @@ const Content: FC = () => {
       });
     });
 
-    // Получение локального медиапотока
     const getVideo = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -176,11 +183,10 @@ const Content: FC = () => {
         setLocalStream(stream);
         setPeers(prev => [
           ...prev.filter(peer => peer.id !== 'me'),
-          { stream, id: 'me', isPlayAudio: false },
+          { stream, id: 'me', isPlayAudio: true, isPlayVideo: true, me: true },
         ]);
 
-        socket.on('USER_CONNECTED', userId => {
-          console.log('Новый пользователь, надо позвонить');
+        socket.on(ACTIONS_SOCKET.USER_CONNECTED, userId => {
           soundLoading.play();
           reconnectCall(userId, stream, peerServer);
         });
@@ -196,17 +202,85 @@ const Content: FC = () => {
     getVideo();
 
     return () => {
-      // Очистка при размонтировании
       cleanupTimeouts();
       if (peerServerRef.current) {
         peerServerRef.current.destroy();
       }
-      socket.off('USER_CONNECTED');
+      socket.off(ACTIONS_SOCKET.USER_CONNECTED);
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
+
+  const toggleAudio = () => {
+    if (localStream) {
+      const audioTracks = localStream.getAudioTracks();
+      audioTracks.forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsAudioEnabled(!isAudioEnabled);
+      setPeers(prev =>
+        prev.map(peer =>
+          peer.id === 'me'
+            ? { ...peer, stream: localStream, isPlayAudio: !peer.isPlayAudio }
+            : peer,
+        ),
+      );
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStream) {
+      const videoTracks = localStream.getVideoTracks();
+      videoTracks.forEach(track => {
+        track.enabled = !track.enabled;
+      });
+
+      setIsVideoEnabled(prev => !prev);
+      setPeers(prev =>
+        prev.map(peer =>
+          peer.id === 'me'
+            ? { ...peer, stream: localStream, isPlayVideo: !peer.isPlayVideo }
+            : peer,
+        ),
+      );
+    }
+  };
+
+  useEffect(() => {
+    socket.emit(ACTIONS_SOCKET.TOGGLE_VIDEO, {
+      roomId,
+      userId: peerServerRef.current?.id,
+      stateVideo: isVideoEnabled,
+    });
+  }, [isVideoEnabled]);
+
+  useEffect(() => {
+    socket.emit(ACTIONS_SOCKET.TOGGLE_AUDIO, {
+      roomId,
+      userId: peerServerRef.current?.id,
+      stateAudio: isAudioEnabled,
+    });
+  }, [isAudioEnabled]);
+
+  useEffect(() => {
+    socket.on(ACTIONS_SOCKET.TOGGLE_AUDIO, ({ userId, stateAudio }) => {
+      setPeers(prev =>
+        prev.map(peer =>
+          peer.id == userId ? { ...peer, isPlayAudio: stateAudio } : peer,
+        ),
+      );
+    });
+
+    socket.on(ACTIONS_SOCKET.TOGGLE_VIDEO, ({ userId, stateVideo }) => {
+      setPeers(prev =>
+        prev.map(peer =>
+          peer.id == userId ? { ...peer, isPlayVideo: stateVideo } : peer,
+        ),
+      );
+    });
+  });
 
   return (
     <main className={styles.main}>
@@ -228,23 +302,31 @@ const Content: FC = () => {
       </header>
       <div className={styles.videos}>
         {peers.map((peer, index) => (
-          <VideoPlayer {...peer} key={`${peer.id}-${index}`} />
+          <VideoPlayer
+            isAlone={peers.length == 1}
+            {...peer}
+            key={`${peer.id}-${index}`}
+          />
         ))}
       </div>
       <nav className={styles.nav}>
         {!isLaptop && (
-          <div className="empty">
-            <Button title="Скопировать ссылку">
-              <MessageCircle size={24} />
-            </Button>
-          </div>
+          <Button title={`Скопировать ссылку: ${window.location.href}`}>
+            <Link size={24} />
+          </Button>
         )}
         <div className={styles.navCenter}>
-          <Button title="Микрофон">
-            <Mic size={24} />
+          <Button
+            onClick={toggleAudio}
+            variant={isAudioEnabled ? 'white' : 'black'}
+            title="Микрофон">
+            {isAudioEnabled ? <Mic size={24} /> : <MicOff size={24} />}
           </Button>
-          <Button title="Камера">
-            <Video size={24} />
+          <Button
+            onClick={toggleVideo}
+            variant={isVideoEnabled ? 'white' : 'black'}
+            title="Камера">
+            {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
           </Button>
           <Button title="Камера устройства">
             <Monitor size={24} />
@@ -255,6 +337,11 @@ const Content: FC = () => {
           {isLaptop && (
             <Button onClick={() => dispatch(toggleSide())} title="Открыть чат">
               <MessageCircle size={24} />
+            </Button>
+          )}
+          {isLaptop && (
+            <Button title="Скопировать ссылку">
+              <Link size={24} />
             </Button>
           )}
         </div>

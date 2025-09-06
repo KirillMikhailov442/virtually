@@ -30,6 +30,7 @@
   justify-content: center;
   border-radius: 8px;
   background-color: var(--primary-90);
+  position: relative;
 
   & video {
     width: 50%;
@@ -59,6 +60,15 @@
 
 .active {
   background-color: var(--blue-100);
+}
+
+.micOff {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--primary-70);
 }
 
 @media (max-width: 1024px) {

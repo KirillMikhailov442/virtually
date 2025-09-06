@@ -28,6 +28,19 @@ io.on('connection', (socket) => {
       
       socket.broadcast.to(roomId).emit('USER_CONNECTED', userId)
     })
+
+    socket.on("TOGGLE_AUDIO", ({roomId, userId, stateAudio}) => {
+      console.log('TOGGLE AUDIO');
+      console.log(roomId, userId, stateAudio);
+      
+      socket.to(roomId).emit('TOGGLE_AUDIO', {userId, stateAudio})
+    })
+
+    socket.on("TOGGLE_VIDEO", ({roomId, userId, stateVideo}) => {
+      console.log('TOGGLE VIDEO');
+      console.log(roomId, userId, stateVideo);
+      socket.to(roomId).emit('TOGGLE_VIDEO', {userId, stateVideo})
+    })
 });
 
 server.listen(3000, () => {
