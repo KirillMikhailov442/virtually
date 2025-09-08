@@ -1,5 +1,6 @@
 export enum ACTIONS_SOCKET {
   JOIN = 'JOIN',
+  USER_LEFT = 'USER_LEFT',
   LEAVE = 'LEAVE',
   ADD_PEER = 'ADD_PEER',
   REMOVE_PEER = 'REMOVE_PEER',

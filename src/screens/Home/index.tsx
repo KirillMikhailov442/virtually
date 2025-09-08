@@ -56,13 +56,6 @@ const HomeScreen: NextPage = () => {
               count: data.count,
             });
             const encrypted = CryptoJS.AES.encrypt(obj, SECRET_KEY).toString();
-
-            // const id = v4();
-            // Cookies.set(
-            //   'room',
-            //   JSON.stringify({ id, name: data.name, count: data.count }),
-            //   { expires: 1 },
-            // );
             push(`/rooms/${urlEncode(encrypted)}`);
           })}
           className={styles.form}>

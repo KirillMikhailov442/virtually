@@ -5,8 +5,8 @@ import styles from './Content.module.scss';
 import { Avatar, AvatarGroup, useMediaQuery } from '@chakra-ui/react';
 import Button from '@/components/UI/Button';
 import {
+  Check,
   Link,
-  MessageCircle,
   Mic,
   MicOff,
   Monitor,
@@ -15,10 +15,6 @@ import {
   Video,
   VideoOff,
 } from 'lucide-react';
-import useAppDispatch from '@/hooks/useAppDispatch';
-import { toggleSide } from '@/store/slices/room';
-import useAppSelector from '@/hooks/useAppSekector';
-import clsx from 'clsx';
 import Cookies from 'js-cookie';
 import { useParams, useRouter } from 'next/navigation';
 import { socket } from '@/configs/socket';
@@ -37,12 +33,13 @@ soundLoading.volume = 0.5;
 const soundSucces = new Audio('/sounds/success.mp3');
 soundSucces.volume = 0.5;
 
+const soundLeave = new Audio('/sounds/leave.mp3');
+soundLeave.volume = 0.5;
+
 const Content: FC = () => {
-  const dispatch = useAppDispatch();
-  const isOpenSide = useAppSelector(state => state.roomSlice.sideOpen);
   const [isLaptop] = useMediaQuery('(max-width: 1024px)');
   const roomId = useParams<{ id: string }>().id;
-  const { back } = useRouter();
+  const { back, replace } = useRouter();
   const [peers, setPeers] = useState<VideoPlayerProps[]>([]);
   const [title, setTitle] = useState('');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -53,6 +50,8 @@ const Content: FC = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const originalLocalStreamRef = useRef<MediaStream | null>(null);
+  const [isCopyLink, setIsCopyLink] = useState(false);
+  const [peerId, setPeerId] = useState('');
 
   useEffect(() => {
     const bytes = CryptoJS.AES.decrypt(urlDecode(roomId), SECRET_KEY);
@@ -85,7 +84,6 @@ const Content: FC = () => {
     const call = peerServer.call(userId, stream);
 
     const timeoutId = setTimeout(() => {
-      console.log(`Таймаут подключения к ${userId}, переподключаемся...`);
       call.close();
       reconnectCall(userId, stream, peerServer);
     }, 5000);
@@ -237,10 +235,16 @@ const Content: FC = () => {
     peerServerRef.current = peerServer;
 
     peerServer.on('open', id => {
+      setPeerId(id);
       socket.emit(ACTIONS_SOCKET.JOIN, {
         roomId,
         userId: id,
       });
+    });
+
+    socket.on(ACTIONS_SOCKET.USER_LEFT, (userId: string) => {
+      soundLeave.play();
+      setPeers(prev => prev.filter(peer => peer.id !== userId));
     });
 
     const getVideo = async () => {
@@ -277,6 +281,7 @@ const Content: FC = () => {
         peerServerRef.current.destroy();
       }
       socket.off(ACTIONS_SOCKET.USER_CONNECTED);
+      socket.off(ACTIONS_SOCKET.USER_LEFT);
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
@@ -321,6 +326,28 @@ const Content: FC = () => {
     }
   };
 
+  const endCall = () => {
+    socket.emit(ACTIONS_SOCKET.LEAVE, {
+      roomId,
+      userId: peerId,
+    });
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+    }
+
+    if (peerServerRef.current) {
+      peerServerRef.current.destroy();
+    }
+    cleanupTimeouts();
+    soundLoading.pause();
+    soundSucces.pause();
+    replace('/');
+  };
+
   useEffect(() => {
     socket.emit(ACTIONS_SOCKET.TOGGLE_VIDEO, {
       roomId,
@@ -355,6 +382,21 @@ const Content: FC = () => {
     });
   });
 
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      socket.emit(ACTIONS_SOCKET.LEAVE, {
+        roomId,
+        userId: peerServerRef.current?.id,
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [roomId]);
+
   return (
     <main className={styles.main}>
       <header className={styles.header}>
@@ -385,7 +427,9 @@ const Content: FC = () => {
       </div>
       <nav className={styles.nav}>
         {!isLaptop && (
-          <Button title={`Скопировать ссылку: ${window.location.href}`}>
+          <Button
+            className="empty"
+            title={`Скопировать ссылку: ${window.location.href}`}>
             <Link size={24} />
           </Button>
         )}
@@ -413,26 +457,43 @@ const Content: FC = () => {
             }>
             {isScreenSharing ? <MonitorOff size={24} /> : <Monitor size={24} />}
           </Button>
-          <Button variant="danger" title="Завершить созвон">
+          <Button
+            onClick={endCall}
+            variant="danger"
+            title="Завершить видеозвонок">
             <PhoneOff size={20} />
           </Button>
           {isLaptop && (
-            <Button onClick={() => dispatch(toggleSide())} title="Открыть чат">
-              <MessageCircle size={24} />
-            </Button>
-          )}
-          {isLaptop && (
-            <Button title="Скопировать ссылку">
-              <Link size={24} />
+            <Button
+              disabled={isCopyLink}
+              onClick={() => {
+                setIsCopyLink(true);
+                navigator.clipboard.writeText(window.location.href);
+                toast.success('Ссылка скопирована');
+                setTimeout(() => {
+                  setIsCopyLink(false);
+                }, 2000);
+              }}
+              variant={isCopyLink ? 'white' : 'black'}
+              title={`Скопировать ссылку`}>
+              {isCopyLink ? <Check size={24} /> : <Link size={24} />}
             </Button>
           )}
         </div>
         {!isLaptop && (
           <Button
-            className={clsx(isOpenSide && styles.activeButton)}
-            onClick={() => dispatch(toggleSide())}
-            title="Открыть чат">
-            <MessageCircle size={24} />
+            disabled={isCopyLink}
+            onClick={() => {
+              setIsCopyLink(true);
+              navigator.clipboard.writeText(window.location.href);
+              toast.success('Ссылка скопирована');
+              setTimeout(() => {
+                setIsCopyLink(false);
+              }, 2000);
+            }}
+            variant={isCopyLink ? 'white' : 'black'}
+            title={`Скопировать ссылку`}>
+            {isCopyLink ? <Check size={24} /> : <Link size={24} />}
           </Button>
         )}
       </nav>

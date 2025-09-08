@@ -7,7 +7,7 @@ const RoomScreen: NextPage = () => {
   return (
     <div className={styles.page}>
       <Content />
-      <RightSidebar />
+      {/* <RightSidebar /> */}
     </div>
   );
 };

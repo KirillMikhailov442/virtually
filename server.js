@@ -24,25 +24,23 @@ io.on('connection', (socket) => {
 
     socket.on('JOIN', ({roomId, userId}) =>{  
       socket.join(roomId)
-      console.log(`ROOM: ${roomId} USER: ${userId}`);
-      
       socket.broadcast.to(roomId).emit('USER_CONNECTED', userId)
     })
 
     socket.on("TOGGLE_AUDIO", ({roomId, userId, stateAudio}) => {
-      console.log('TOGGLE AUDIO');
-      console.log(roomId, userId, stateAudio);
-      
       socket.to(roomId).emit('TOGGLE_AUDIO', {userId, stateAudio})
     })
 
+    socket.on("LEAVE", ({roomId, userId}) => {      
+      socket.to(roomId).emit('USER_LEFT', userId)
+    })
+
     socket.on("TOGGLE_VIDEO", ({roomId, userId, stateVideo}) => {
-      console.log('TOGGLE VIDEO');
-      console.log(roomId, userId, stateVideo);
       socket.to(roomId).emit('TOGGLE_VIDEO', {userId, stateVideo})
     })
 });
 
-server.listen(3000, () => {
-  console.log('server running');
+const PORT = 3000
+server.listen(PORT, () => {
+  console.log(`The server is running on port ${PORT}`);
 });
