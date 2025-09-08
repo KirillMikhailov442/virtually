@@ -38,6 +38,14 @@ io.on('connection', (socket) => {
     socket.on("TOGGLE_VIDEO", ({roomId, userId, stateVideo}) => {
       socket.to(roomId).emit('TOGGLE_VIDEO', {userId, stateVideo})
     })
+
+    socket.on('SAY_MY_NAME', ({roomId, userId, name}) => {
+      socket.broadcast.to(roomId).emit('SAY_YOUR_NAME', {userId, name})
+    })
+
+    socket.on('SAY_MY_NAME_ANSWER', ({roomId, userId, name}) => {
+      socket.broadcast.to(roomId).emit('SAY_YOUR_NAME_ANSWER', {userId, name})
+    })
 });
 
 const PORT = 3000

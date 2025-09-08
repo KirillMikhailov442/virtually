@@ -11,6 +11,7 @@ export interface VideoPlayerProps {
   isScreenShare?: boolean;
   isAlone?: boolean;
   me?: boolean;
+  name?: string;
 }
 
 const VideoPlayer: FC<VideoPlayerProps> = ({
@@ -20,6 +21,7 @@ const VideoPlayer: FC<VideoPlayerProps> = ({
   isScreenShare = false,
   isAlone,
   me = false,
+  name,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -55,6 +57,7 @@ const VideoPlayer: FC<VideoPlayerProps> = ({
           <p>Камера отключена</p>
         </div>
       )}
+      <div className={styles.name}>{name}</div>
     </div>
   );
 };

@@ -149,7 +149,7 @@ const Content: FC = () => {
       });
     });
 
-    call.on('error', error => {
+    call.on('error', () => {
       clearTimeout(answerTimeout);
     });
   };
@@ -202,7 +202,11 @@ const Content: FC = () => {
         setPeers(prev =>
           prev.map(peer =>
             peer.id === 'me'
-              ? { ...peer, stream: screenStream, isPlayVideo: true }
+              ? {
+                  ...peer,
+                  stream: screenStream,
+                  isPlayVideo: true,
+                }
               : peer,
           ),
         );
@@ -225,6 +229,16 @@ const Content: FC = () => {
       }
     }
   };
+
+  useEffect(() => {
+    if (peers.length <= 1) return;
+
+    socket.emit(ACTIONS_SOCKET.SAY_MY_NAME, {
+      roomId,
+      userId: peerId,
+      name: JSON.parse(Cookies.get('user') as string).name,
+    });
+  }, [peers.length]);
 
   useEffect(() => {
     const peerServer = new Peer({
@@ -257,7 +271,14 @@ const Content: FC = () => {
         setLocalStream(stream);
         setPeers(prev => [
           ...prev.filter(peer => peer.id !== 'me'),
-          { stream, id: 'me', isPlayAudio: true, isPlayVideo: true, me: true },
+          {
+            stream,
+            id: 'me',
+            isPlayAudio: true,
+            isPlayVideo: true,
+            me: true,
+            name: JSON.parse(Cookies.get('user') as string).name,
+          },
         ]);
 
         socket.on(ACTIONS_SOCKET.USER_CONNECTED, userId => {
@@ -397,15 +418,36 @@ const Content: FC = () => {
     };
   }, [roomId]);
 
+  useEffect(() => {
+    socket.on(ACTIONS_SOCKET.SAY_YOUR_NAME, ({ userId, name }) => {
+      setPeers(prev =>
+        prev.map(peer => (peer.id == userId ? { ...peer, name } : peer)),
+      );
+      socket.emit(ACTIONS_SOCKET.SAY_MY_NAME_ANSWER, {
+        userId: peerServerRef.current?.id,
+        roomId,
+        name: JSON.parse(Cookies.get('user') as string).name,
+      });
+    });
+
+    socket.on(ACTIONS_SOCKET.SAY_YOUR_NAME_ANSWER, ({ userId, name }) => {
+      setPeers(prev =>
+        prev.map(peer => (peer.id == userId ? { ...peer, name } : peer)),
+      );
+    });
+  }, [peers]);
+
   return (
     <main className={styles.main}>
       <header className={styles.header}>
         <div className="flex items-center gap-3">
-          <h5 className={styles.name}>{title}</h5>
+          <h5 className={styles.title}>
+            {title} ({peers.length})
+          </h5>
           <AvatarGroup size="xs" max={5}>
-            <Avatar name="Ryan Florence" src="https://bit.ly/ryan-florence" />
-            <Avatar name="Segun Adebayo" src="https://bit.ly/sage-adebayo" />
-            <Avatar name="Kent Dodds" src="https://bit.ly/kent-c-dodds" />
+            {peers.map(peer => (
+              <Avatar name={peer.name} key={peer.id} />
+            ))}
           </AvatarGroup>
         </div>
         <div>

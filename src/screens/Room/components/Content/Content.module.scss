@@ -12,7 +12,7 @@
   justify-content: space-between;
 }
 
-.name {
+.title {
   font-weight: bold;
 }
 
@@ -74,6 +74,13 @@
   padding: 0.5rem;
   border-radius: 50%;
   background-color: var(--primary-70);
+}
+
+.name {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  font-weight: 600;
 }
 
 @media (max-width: 1024px) {

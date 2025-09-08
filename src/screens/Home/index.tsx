@@ -24,10 +24,6 @@ const HomeScreen: NextPage = () => {
       .min(2, 'Название слишком короткое')
       .max(20, 'Название слишком длинное')
       .nonempty({ message: 'Введите название' }),
-    count: z.coerce
-      .number()
-      .min(1, 'Количество не может быть меньше 1')
-      .max(4, 'Количество не может быть больше 4'),
   });
   type FormSchema = z.infer<typeof formSchema>;
 
@@ -53,7 +49,6 @@ const HomeScreen: NextPage = () => {
             const obj = JSON.stringify({
               id: CryptoJS.lib.WordArray.random(4).toString(),
               name: data.name,
-              count: data.count,
             });
             const encrypted = CryptoJS.AES.encrypt(obj, SECRET_KEY).toString();
             push(`/rooms/${urlEncode(encrypted)}`);
@@ -63,15 +58,6 @@ const HomeScreen: NextPage = () => {
             placeholder="Введите название"
             {...register('name')}
             error={errors.name?.message}
-          />
-          <Input
-            type="number"
-            value={2}
-            min={1}
-            max={4}
-            placeholder="Макс. количество участников"
-            {...register('count')}
-            error={errors.count?.message}
           />
           <Button disabled={Object.keys(errors).length > 0} variant="white">
             Создать комнату

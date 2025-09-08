@@ -24,7 +24,7 @@ const LoginScreen: NextPage = () => {
     name: z
       .string()
       .min(2, 'Имя слишком короткое')
-      .max(20, 'Имя слишком длинное')
+      .max(20, 'Имя слишком длинное (максимум 18)')
       .nonempty({ message: 'Введите имя' }),
   });
   type FormSchema = z.infer<typeof formSchema>;
